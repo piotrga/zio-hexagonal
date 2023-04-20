@@ -12,5 +12,9 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-test-junit" % "2.0.10",
       "dev.zio" %% "zio-macros" % "2.0.10"
     ),
-      scalacOptions += "-Ymacro-annotations"
+    libraryDependencies += "dev.zio" %% "zio-config" % "4.0.0-RC14",
+    libraryDependencies +=
+      "dev.zio" %% "zio-config-typesafe" % "4.0.0-RC14",
+    libraryDependencies += "dev.zio" %% "zio-config-magnolia" % "4.0.0-RC14",
+    scalacOptions += "-Ymacro-annotations"
   )
