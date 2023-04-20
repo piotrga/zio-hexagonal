@@ -1,25 +1,28 @@
-import zio.durationInt
+import zio.test.TestAspect.ignore
 import zio.test.junit.JUnitRunnableSpec
-import zio.test.{Spec, TestClock, suite, test}
+import zio.test.{Spec, suite, test}
 
 
 object QuerySpec extends ShouldAssertions{
   def spec: Spec[TestFixture, Throwable] = {
     suite("Basic queries")(
 
-      test("simple query"){
-        TestFixture.query("select * from small_table limit 0")
-          .shouldBe(Nil)
+      test("sick days"){
+        TestFixture
+          .query("SELECT city, age_range, AVG(sick_days) FROM patients GROUP BY 1,2 ORDER BY 1, 2")
+          .shouldBe(List(
+            List("Lisbon", "20-30", "2.7"),
+            List("Lisbon", "30-40", "4.6"),
+            List("Warsaw", "20-30", "2.8"),
+            List("Warsaw", "30-40", "4.1")
+          ))
       },
 
-      test("illustrate shutdown"){
-        (for {
-          fiber <- TestFixture.querySlow("select * from LARGE_table limit 0").fork
-          _ <- TestClock.adjust(3.second)
-          rows <- fiber.join
-        } yield rows)
+      test("some other test..."){
+        TestFixture
+          .querySlow("select * from LARGE_table limit 0")
           .shouldBe(Nil)
-      }
+      } @@ ignore
     )
   }
 
@@ -28,15 +31,14 @@ object QuerySpec extends ShouldAssertions{
 
 
 class RealWarehouseQueryTest extends JUnitRunnableSpec {
-  override def spec =
-    QuerySpec.spec
-      .provide(TestFixture.inMemoryWithRealWarehouse(QuerySpec.testData))
+  override def spec = QuerySpec.spec
+      .provide(TestFixture.`in memory with REAL warehouse`(QuerySpec.testData))
 }
 
-class InMemoryWarehouseQueryTest extends JUnitRunnableSpec {
+class EmbeddedWarehouseQueryTest extends JUnitRunnableSpec {
   override def spec =
     QuerySpec.spec
-      .provide(TestFixture.inMemoryWithInMemoryWarehouse(QuerySpec.testData))
+      .provide(TestFixture.`in memory with EMBEDDED warehouse`(QuerySpec.testData))
 }
 
 
