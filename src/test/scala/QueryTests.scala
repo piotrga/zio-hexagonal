@@ -1,6 +1,5 @@
-import zio.test.TestAspect.ignore
-import zio.test.junit.JUnitRunnableSpec
-import zio.test.{Spec, suite, test}
+import zio.test.TestAspect.withLiveClock
+import zio.test.{Spec, ZIOSpecDefault, suite, test}
 
 
 object QuerySpec extends ShouldAssertions{
@@ -22,23 +21,24 @@ object QuerySpec extends ShouldAssertions{
         TestFixture
           .querySlow("select * from LARGE_table limit 0")
           .shouldBe(Nil)
-      } @@ ignore
+      } @@ withLiveClock
     )
   }
 
-  def testData : TestData = TestData(/*...*/)
+  def testData : TestData =
+    TestData(/*...*/)
 }
 
 
-class RealWarehouseQueryTest extends JUnitRunnableSpec {
-  override def spec = QuerySpec.spec
-      .provide(TestFixture.`in memory with REAL warehouse`(QuerySpec.testData))
-}
+//class RealWarehouseQueryTest extends JUnitRunnableSpec {
+//  override def spec = QuerySpec.spec
+//      .provideLayerShared(TestFixture.`in memory with REAL warehouse`(QuerySpec.testData))
+//}
 
-class EmbeddedWarehouseQueryTest extends JUnitRunnableSpec {
+object EmbeddedWarehouseQueryTest extends ZIOSpecDefault {
   override def spec =
     QuerySpec.spec
-      .provide(TestFixture.`in memory with EMBEDDED warehouse`(QuerySpec.testData))
+      .provideShared(TestFixture.`in memory with EMBEDDED warehouse`(QuerySpec.testData))
 }
 
 

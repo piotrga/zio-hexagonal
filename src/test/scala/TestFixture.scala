@@ -11,15 +11,6 @@ trait TestFixture {
 
 object TestFixture{
 
-  def `in memory with EMBEDDED warehouse`(testData: TestData) : TaskLayer[TestFixture] = ZLayer.make[TestFixture](
-    MessageBus.fromDocker,
-    Connectivity.inProcess(testData),
-    Directory.inMemory(testData),
-    Brain.inMemory,
-    Combinator.inMemory,
-    ZLayer.fromFunction(new TestFixtureDemo(_))
-  )
-
   def `in memory with REAL warehouse`(testData: TestData): TaskLayer[TestFixture] =
     (
       MessageBus.fromDocker ++ Directory.inMemory(testData) >+>
@@ -30,6 +21,16 @@ object TestFixture{
           )
       ) >>>
       ZLayer.fromFunction(new TestFixtureDemo(_))
+
+  def `in memory with EMBEDDED warehouse`(testData: TestData) : TaskLayer[TestFixture] =
+    ZLayer.make[TestFixture](
+      MessageBus.fromDocker,
+      Connectivity.inProcess(testData),
+      Directory.inMemory(testData),
+      Brain.inMemory,
+      Combinator.inMemory,
+      ZLayer.fromFunction(new TestFixtureDemo(_))
+    )
 
   private class TestFixtureDemo(bus: MessageBus) extends TestFixture {
     private val DEMO_RESULT = List(

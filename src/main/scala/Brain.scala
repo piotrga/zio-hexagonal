@@ -1,20 +1,21 @@
 import zio.Schedule.{exponential, forever, spaced}
 import zio.ZIO.logInfo
-import zio.{&, Duration, RIO, RLayer, Scope, Task, TaskLayer, ZLayer, durationInt}
+import zio.{&, Duration, Fiber, RLayer, Scope, Task, TaskLayer, ZIO, ZLayer, durationInt}
 
 class Brain(config: Brain.Config, catalog: Directory, audit: Audit, bus: MessageBus){
 
-  def subscribeToEvents() : RIO[Scope, Unit] =
-    bus.subscribe(config.eventTopic)
+  def subscribeToEvents() : ZIO[Scope, Nothing, Fiber.Runtime[Nothing, Unit]] =
+    bus
+      .subscribe(config.eventTopic)
       .timeout(config.busTimeout)
       .retry(forever && (exponential(100.millis) || spaced(3.seconds)))
       .tap(doSomeWork(_).ignoreLogged)
       .runDrain
-      .onTermination(_ => logInfo("Shutting down Brain"))
-      .forkScoped.unit
+      .onTermination(_ => logInfo(s"Shutting down Brain [${hashCode}]"))
+      .forkScoped
 
   private def doSomeWork(msg: String): Task[Unit] =
-    logInfo(s"Brain received [$msg]")
+    logInfo(s"Brain [$hashCode] received [$msg]")
 }
 
 object Brain{
@@ -27,7 +28,10 @@ object Brain{
                      audit: Audit.Config = Audit.Config()
                    )
 
-  /* Peers vs internals. If you can, always construct your own dependencies. Re-use dependencies only if you have to. */
+  /**
+   * Peers vs internals. If you can, always construct your own dependencies.
+   * Re-use dependencies only if you have to.
+   **/
   def apply(config: Config): TaskLayer[Unit] = {
     MessageBus(config.bus) ++
       Directory(config.directory) ++
@@ -40,15 +44,14 @@ object Brain{
     ZLayer.service[Config].flatMap(env => Brain(env.get))
 
   def inMemory: RLayer[MessageBus & Directory, Unit] =
-      Audit.inMemory >>>
+    Audit.inMemory >>>
       ZLayer.fromFunction(new Brain(Config(), _, _, _)) >>>
       subscribed()
 
-  private def subscribed(): RLayer[Brain, Unit] = {
-    ZLayer.service[Brain].flatMap(env => ZLayer.scoped(
-      env.get[Brain]
-        .subscribeToEvents()
-    ))
-  }
+  private def subscribed(): RLayer[Brain, Unit] =
+    ZLayer.service[Brain].flatMap(env => ZLayer.scoped {
+      val b = env.get[Brain]
+        b.subscribeToEvents() <* logInfo(s"Brain [${b.hashCode}] subscribed")
+    }).unit
 
 }
